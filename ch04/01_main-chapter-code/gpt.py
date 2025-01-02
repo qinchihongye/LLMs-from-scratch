@@ -57,8 +57,8 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
 
-        self.d_out = d_out
-        self.num_heads = num_heads
+        self.d_out = d_out 
+        self.num_heads = num_heads 
         self.head_dim = d_out // num_heads  # Reduce the projection dim to match desired output dim
 
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -102,7 +102,7 @@ class MultiHeadAttention(nn.Module):
         context_vec = (attn_weights @ values).transpose(1, 2)
 
         # Combine heads, where self.d_out = self.num_heads * self.head_dim
-        context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
+        context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out) # contiguous() 会创建一个新的张量，该张量的内存布局是连续的，但内容与原张量相同。如果原张量已经是连续的，contiguous() 不会创建新的张量，而是直接返回原张量。在涉及转置、切片或维度重排的操作后，通常需要使用 contiguous() 来避免潜在的错误或性能问题。
         context_vec = self.out_proj(context_vec)  # optional projection
 
         return context_vec
@@ -153,12 +153,12 @@ class TransformerBlock(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.att = MultiHeadAttention(
-            d_in=cfg["emb_dim"],
-            d_out=cfg["emb_dim"],
-            context_length=cfg["context_length"],
-            num_heads=cfg["n_heads"],
-            dropout=cfg["drop_rate"],
-            qkv_bias=cfg["qkv_bias"])
+            d_in=cfg["emb_dim"], 
+            d_out=cfg["emb_dim"], 
+            context_length=cfg["context_length"], 
+            num_heads=cfg["n_heads"], 
+            dropout=cfg["drop_rate"], 
+            qkv_bias=cfg["qkv_bias"]) 
         self.ff = FeedForward(cfg)
         self.norm1 = LayerNorm(cfg["emb_dim"])
         self.norm2 = LayerNorm(cfg["emb_dim"])
@@ -185,8 +185,8 @@ class TransformerBlock(nn.Module):
 class GPTModel(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
-        self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
+        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"]) # [50257,768]
+        self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"]) # [1024,768]
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
 
         self.trf_blocks = nn.Sequential(
@@ -214,7 +214,7 @@ def generate_text_simple(model, idx, max_new_tokens, context_size):
         # Crop current context if it exceeds the supported context size
         # E.g., if LLM supports only 5 tokens, and the context size is 10
         # then only the last 5 tokens are used as context
-        idx_cond = idx[:, -context_size:]
+        idx_cond = idx[:, -context_size:]   # 截取最后的context_size个token
 
         # Get the predictions
         with torch.no_grad():
@@ -235,13 +235,13 @@ def generate_text_simple(model, idx, max_new_tokens, context_size):
 
 def main():
     GPT_CONFIG_124M = {
-        "vocab_size": 50257,     # Vocabulary size
-        "context_length": 1024,  # Context length
-        "emb_dim": 768,          # Embedding dimension
-        "n_heads": 12,           # Number of attention heads
-        "n_layers": 12,          # Number of layers
-        "drop_rate": 0.1,        # Dropout rate
-        "qkv_bias": False        # Query-Key-Value bias
+        "vocab_size": 50257,     # Vocabulary size 词汇表大小，gpt2的词汇表大小为50257,由 BPEtokenizer 支持
+        "context_length": 1024,  # Context length  模型的最大输入标记数量，通过 position embedding 实现
+        "emb_dim": 768,          # Embedding dimension token输入的维度，将每个 token 映射到一个768向量
+        "n_heads": 12,           # Number of attention heads 多头注意力机制的头数
+        "n_layers": 12,          # Number of layers  tansformer block的层数
+        "drop_rate": 0.1,        # Dropout rate  dropout的比率
+        "qkv_bias": False        # Query-Key-Value bias 是否在QKV层中使用偏置,这里禁用此选项
     }
 
     torch.manual_seed(123)
@@ -251,8 +251,8 @@ def main():
     start_context = "Hello, I am"
 
     tokenizer = tiktoken.get_encoding("gpt2")
-    encoded = tokenizer.encode(start_context)
-    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+    encoded = tokenizer.encode(start_context)   # shape torch.Size([4])
+    encoded_tensor = torch.tensor(encoded).unsqueeze(0) # shape torch.Size([1, 4])
 
     print(f"\n{50*'='}\n{22*' '}IN\n{50*'='}")
     print("\nInput text:", start_context)
