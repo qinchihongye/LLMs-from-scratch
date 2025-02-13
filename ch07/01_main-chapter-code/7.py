@@ -67,6 +67,21 @@ desired_response = f"\n\n### Response:\n{data[999]['output']}"
 
 print(model_input + desired_response)
 
+
+train_portion = int(len(data) * 0.85)  # 85% for training
+test_portion = int(len(data) * 0.1)    # 10% for testing
+val_portion = len(data) - train_portion - test_portion  # Remaining 5% for validation
+
+train_data = data[:train_portion]
+test_data = data[train_portion:train_portion + test_portion]
+val_data = data[train_portion + test_portion:]
+
+
+print("Training set length:", len(train_data))
+print("Validation set length:", len(val_data))
+print("Test set length:", len(test_data))
+
+
 """ 7.3 Organizing data into training batches """
 import torch
 from torch.utils.data import Dataset
@@ -253,3 +268,80 @@ targets_3 = torch.tensor([0, 1, -100])
 loss_3 = torch.nn.functional.cross_entropy(logits_2, targets_3)
 print(loss_3)
 print("loss_1 == loss_3:", loss_1 == loss_3)
+
+
+"""7.4 Creating data loaders for an instruction dataset"""
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Note:
+# Uncommenting the following lines will allow the code to run on Apple Silicon chips, if applicable,
+# which is much faster than on an Apple CPU (as measured on an M3 MacBook Air).
+# However, the resulting loss values may be slightly different.
+
+#if torch.cuda.is_available():
+#    device = torch.device("cuda")
+#elif torch.backends.mps.is_available():
+#    device = torch.device("mps")
+#else:
+#    device = torch.device("cpu")
+
+print("Device:", device)
+
+
+from functools import partial
+
+customized_collate_fn = partial(
+    custom_collate_fn,
+    device=device,
+    allowed_max_length=1024
+)
+
+
+from torch.utils.data import DataLoader
+
+
+num_workers = 0
+batch_size = 8
+
+torch.manual_seed(123)
+
+train_dataset = InstructionDataset(train_data, tokenizer)
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=batch_size,
+    collate_fn=customized_collate_fn,
+    shuffle=True,
+    drop_last=True,
+    num_workers=num_workers
+)
+
+val_dataset = InstructionDataset(val_data, tokenizer)
+val_loader = DataLoader(
+    val_dataset,
+    batch_size=batch_size,
+    collate_fn=customized_collate_fn,
+    shuffle=False,
+    drop_last=False,
+    num_workers=num_workers
+)
+
+test_dataset = InstructionDataset(test_data, tokenizer)
+test_loader = DataLoader(
+    test_dataset,
+    batch_size=batch_size,
+    collate_fn=customized_collate_fn,
+    shuffle=False,
+    drop_last=False,
+    num_workers=num_workers
+)
+
+print("Train loader:")
+for inputs, targets in train_loader:
+    print(inputs.shape, targets.shape)
+
+print(inputs[0])
+
+print(targets[0])
+
+
+"""7.5 Loading a pretrained LLM"""
